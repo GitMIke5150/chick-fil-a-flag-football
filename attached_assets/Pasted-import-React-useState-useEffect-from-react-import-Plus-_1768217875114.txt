@@ -1,0 +1,377 @@
+import React, { useState, useEffect } from ‘react’;
+import { Plus, Trash2, Trophy, Flag, Share2, Mail, Eye, Edit } from ‘lucide-react’;
+
+const FlagFootballScorer = () => {
+const roster = [‘Davis’, ‘Hampton’, ‘Bryce’, ‘Nasty Nate’, ‘Sly’, ‘Hudson’, ‘Bennett’, ‘Caleb’, ‘Knox’];
+
+const schedule = [
+{ id: 1, date: ‘01/07’, day: ‘Wed’, opponent: ‘Dairy Queen’, time: ‘6:45pm’, field: ‘Bay 1’, location: ‘away’ },
+{ id: 2, date: ‘01/08’, day: ‘Thur’, opponent: “Dick’s Sporting Goods”, time: ‘5:45pm’, field: ‘Bay 2’, location: ‘home’ },
+{ id: 3, date: ‘01/13’, day: ‘Tues’, opponent: “Zaxby’s”, time: ‘7:45pm’, field: ‘Bay 2’, location: ‘home’ },
+{ id: 4, date: ‘01/20’, day: ‘Tues’, opponent: “Dick’s Sporting Goods”, time: ‘7:45pm’, field: ‘Bay 2’, location: ‘home’ },
+{ id: 5, date: ‘01/22’, day: ‘Thur’, opponent: ‘Dairy Queen’, time: ‘5:45pm’, field: ‘Bay 2’, location: ‘away’ },
+{ id: 6, date: ‘01/29’, day: ‘Thur’, opponent: “Zaxby’s”, time: ‘6:45pm’, field: ‘Bay 2’, location: ‘away’ },
+{ id: 7, date: ‘02/05’, day: ‘Thur’, opponent: “Dick’s Sporting Goods”, time: ‘6:45pm’, field: ‘Bay 2’, location: ‘away’ },
+{ id: 8, date: ‘02/12’, day: ‘Thur’, opponent: ‘Dairy Queen’, time: ‘6:45pm’, field: ‘Bay 2’, location: ‘home’ }
+];
+
+const [games, setGames] = useState({});
+const [selectedGame, setSelectedGame] = useState(null);
+const [viewMode, setViewMode] = useState(‘admin’); // ‘admin’ or ‘spectator’
+const [showShareModal, setShowShareModal] = useState(false);
+
+useEffect(() => {
+const saved = localStorage.getItem(‘chickFilAGames’);
+if (saved) {
+setGames(JSON.parse(saved));
+}
+
+```
+const savedMode = localStorage.getItem('chickFilAViewMode');
+if (savedMode) {
+  setViewMode(savedMode);
+}
+```
+
+}, []);
+
+useEffect(() => {
+localStorage.setItem(‘chickFilAGames’, JSON.stringify(games));
+}, [games]);
+
+const toggleViewMode = () => {
+const newMode = viewMode === ‘admin’ ? ‘spectator’ : ‘admin’;
+setViewMode(newMode);
+localStorage.setItem(‘chickFilAViewMode’, newMode);
+};
+
+const initGame = (gameId) => {
+if (!games[gameId]) {
+setGames({
+…games,
+[gameId]: {
+ourScore: 0,
+opponentScore: 0,
+stats: roster.reduce((acc, name) => ({
+…acc,
+[name]: { touchdowns: 0, extraPoints: 0, qbTouchdowns: 0, flagPulls: 0 }
+}), {})
+}
+});
+}
+setSelectedGame(gameId);
+};
+
+const updateScore = (gameId, team, value) => {
+setGames({
+…games,
+[gameId]: {
+…games[gameId],
+[team]: Math.max(0, games[gameId][team] + value)
+}
+});
+};
+
+const updateStat = (gameId, player, stat, value) => {
+setGames({
+…games,
+[gameId]: {
+…games[gameId],
+stats: {
+…games[gameId].stats,
+[player]: {
+…games[gameId].stats[player],
+[stat]: Math.max(0, games[gameId].stats[player][stat] + value)
+}
+}
+}
+});
+};
+
+const resetGame = (gameId) => {
+if (confirm(‘Reset this game?’)) {
+const newGames = { …games };
+delete newGames[gameId];
+setGames(newGames);
+setSelectedGame(null);
+}
+};
+
+const generateGameSummary = (gameId) => {
+const game = games[gameId];
+const gameInfo = schedule.find(g => g.id === gameId);
+
+```
+if (!game || !gameInfo) return '';
+
+const result = game.ourScore > game.opponentScore ? '🏆 WIN!' : 
+               game.ourScore < game.opponentScore ? 'Loss' : 'Tie';
+
+let summary = `🏈 Chick-Fil-A Flag Football 🏈\n\n`;
+summary += `Game ${gameInfo.id}: ${gameInfo.day} ${gameInfo.date}\n`;
+summary += `vs ${gameInfo.opponent} (${gameInfo.location.toUpperCase()})\n`;
+summary += `${gameInfo.field} • ${gameInfo.time}\n\n`;
+summary += `📊 FINAL SCORE\n`;
+summary += `Chick-Fil-A: ${game.ourScore}\n`;
+summary += `${gameInfo.opponent}: ${game.opponentScore}\n`;
+summary += `${result}\n\n`;
+
+summary += `⭐ PLAYER STATS ⭐\n`;
+
+// Sort players by total points (TDs * 6 + XPs)
+const playersWithStats = roster
+  .map(player => ({
+    name: player,
+    stats: game.stats[player],
+    totalPoints: (game.stats[player].touchdowns * 6) + game.stats[player].extraPoints
+  }))
+  .filter(p => p.stats.touchdowns > 0 || p.stats.extraPoints > 0 || p.stats.qbTouchdowns > 0 || p.stats.flagPulls > 0)
+  .sort((a, b) => b.totalPoints - a.totalPoints);
+
+if (playersWithStats.length > 0) {
+  playersWithStats.forEach(player => {
+    summary += `\n${player.name}:\n`;
+    if (player.stats.touchdowns > 0) summary += `  🏈 ${player.stats.touchdowns} TD${player.stats.touchdowns > 1 ? 's' : ''}\n`;
+    if (player.stats.extraPoints > 0) summary += `  ✨ ${player.stats.extraPoints} XP${player.stats.extraPoints > 1 ? 's' : ''}\n`;
+    if (player.stats.qbTouchdowns > 0) summary += `  🎯 ${player.stats.qbTouchdowns} QB TD${player.stats.qbTouchdowns > 1 ? 's' : ''}\n`;
+    if (player.stats.flagPulls > 0) summary += `  🚩 ${player.stats.flagPulls} Flag Pull${player.stats.flagPulls > 1 ? 's' : ''}\n`;
+  });
+} else {
+  summary += `No stats recorded yet.\n`;
+}
+
+summary += `\n---\nGo Chick-Fil-A! 🔥\n\n`;
+summary += `📱 App by Surfstung\nWebsites • Apps • Custom Business Solutions\nSurfstungco@gmail.com`;
+
+return summary;
+```
+
+};
+
+const shareGameSummary = async () => {
+const summary = generateGameSummary(selectedGame);
+
+```
+if (navigator.share) {
+  try {
+    await navigator.share({
+      title: 'Chick-Fil-A Game Summary',
+      text: summary
+    });
+  } catch (err) {
+    console.log('Share cancelled');
+  }
+} else {
+  // Fallback: copy to clipboard
+  navigator.clipboard.writeText(summary).then(() => {
+    alert('Game summary copied to clipboard!');
+  });
+}
+```
+
+};
+
+const currentGame = selectedGame ? games[selectedGame] : null;
+const gameInfo = selectedGame ? schedule.find(g => g.id === selectedGame) : null;
+
+return (
+<div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 p-2 sm:p-4">
+<div className="max-w-6xl mx-auto">
+<div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 mb-4 sm:mb-6">
+<div className="flex justify-between items-start mb-2">
+<div className="flex-1">
+<h1 className="text-2xl sm:text-3xl font-bold text-red-600 mb-1 sm:mb-2">Chick-Fil-A Flag Football</h1>
+<p className="text-sm sm:text-base text-gray-600">2026 Winter Season • City of Charleston Recreation</p>
+<p className="text-xs sm:text-sm text-gray-500">Coaches: John Halter • Mike Olson • Chris Wells</p>
+</div>
+<button
+onClick={toggleViewMode}
+className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium ${ viewMode === 'admin'  ? 'bg-red-500 text-white'  : 'bg-gray-200 text-gray-700' }`}
+>
+{viewMode === ‘admin’ ? <Edit size={16} /> : <Eye size={16} />}
+{viewMode === ‘admin’ ? ‘Admin’ : ‘Spectator’}
+</button>
+</div>
+
+```
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-500">Powered by</p>
+          <a 
+            href="mailto:Surfstungco@gmail.com?subject=Website/App Inquiry from Chick-Fil-A Flag Football"
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1.5 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all text-xs sm:text-sm font-medium"
+          >
+            <Mail size={14} />
+            Surfstung - Custom Solutions
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {!selectedGame ? (
+      <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-800">Select a Game</h2>
+        <div className="grid gap-2 sm:gap-3">
+          {schedule.map(game => (
+            <button
+              key={game.id}
+              onClick={() => initGame(game.id)}
+              className="p-3 sm:p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg text-left transition-colors"
+            >
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-base sm:text-lg">
+                    Game {game.id}: vs {game.opponent} {game.location === 'home' ? '(Home)' : '(Away)'}
+                  </div>
+                  <div className="text-xs sm:text-sm opacity-90 truncate">
+                    {game.day} {game.date} • {game.time} • {game.field}
+                  </div>
+                </div>
+                {games[game.id] && (
+                  <div className="text-lg sm:text-xl font-bold shrink-0">
+                    {games[game.id].ourScore} - {games[game.id].opponentScore}
+                  </div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+          <div className="flex justify-between items-start mb-3 sm:mb-4 flex-wrap gap-2">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Game {gameInfo.id}: vs {gameInfo.opponent}
+              </h2>
+              <p className="text-xs sm:text-base text-gray-600">
+                {gameInfo.day} {gameInfo.date} • {gameInfo.time} • {gameInfo.field} • {gameInfo.location === 'home' ? 'Home' : 'Away'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={shareGameSummary}
+                className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm sm:text-base flex items-center gap-1 sm:gap-2"
+              >
+                <Share2 size={16} />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+              <button
+                onClick={() => setSelectedGame(null)}
+                className="px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm sm:text-base shrink-0"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
+            <div className="bg-red-50 p-3 sm:p-6 rounded-lg border-2 border-red-500">
+              <h3 className="text-sm sm:text-lg font-bold text-red-600 mb-1 sm:mb-2">Chick-Fil-A</h3>
+              <div className="text-3xl sm:text-5xl font-bold text-gray-800 mb-2 sm:mb-4">{currentGame.ourScore}</div>
+              {viewMode === 'admin' && (
+                <div className="flex gap-1 sm:gap-2">
+                  <button onClick={() => updateScore(selectedGame, 'ourScore', 6)} className="flex-1 bg-green-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">+6</button>
+                  <button onClick={() => updateScore(selectedGame, 'ourScore', 1)} className="flex-1 bg-green-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">+1</button>
+                  <button onClick={() => updateScore(selectedGame, 'ourScore', -1)} className="bg-red-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">-1</button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 p-3 sm:p-6 rounded-lg border-2 border-gray-400">
+              <h3 className="text-sm sm:text-lg font-bold text-gray-600 mb-1 sm:mb-2 truncate">{gameInfo.opponent}</h3>
+              <div className="text-3xl sm:text-5xl font-bold text-gray-800 mb-2 sm:mb-4">{currentGame.opponentScore}</div>
+              {viewMode === 'admin' && (
+                <div className="flex gap-1 sm:gap-2">
+                  <button onClick={() => updateScore(selectedGame, 'opponentScore', 6)} className="flex-1 bg-gray-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">+6</button>
+                  <button onClick={() => updateScore(selectedGame, 'opponentScore', 1)} className="flex-1 bg-gray-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">+1</button>
+                  <button onClick={() => updateScore(selectedGame, 'opponentScore', -1)} className="bg-red-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-base">-1</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {viewMode === 'admin' && (
+            <button
+              onClick={() => resetGame(selectedGame)}
+              className="w-full bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <Trash2 size={16} /> Reset Game
+            </button>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-800">Player Stats</h3>
+          <div className="grid gap-2 sm:gap-3">
+            {roster.map(player => {
+              const stats = currentGame.stats[player];
+              return (
+                <div key={player} className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                  <div className="font-bold text-base sm:text-lg mb-2 sm:mb-3 text-gray-800">{player}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white p-2 rounded">
+                      <div className="text-xs text-gray-600 mb-1">Touchdowns</div>
+                      <div className="flex items-center gap-1">
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'touchdowns', -1)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">-</button>
+                        )}
+                        <span className={`${viewMode === 'admin' ? 'flex-1' : 'w-full'} text-center font-bold text-sm`}>{stats.touchdowns}</span>
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'touchdowns', 1)} className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="text-xs text-gray-600 mb-1">Extra Pts</div>
+                      <div className="flex items-center gap-1">
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'extraPoints', -1)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">-</button>
+                        )}
+                        <span className={`${viewMode === 'admin' ? 'flex-1' : 'w-full'} text-center font-bold text-sm`}>{stats.extraPoints}</span>
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'extraPoints', 1)} className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="text-xs text-gray-600 mb-1">QB TDs</div>
+                      <div className="flex items-center gap-1">
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'qbTouchdowns', -1)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">-</button>
+                        )}
+                        <span className={`${viewMode === 'admin' ? 'flex-1' : 'w-full'} text-center font-bold text-sm`}>{stats.qbTouchdowns}</span>
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'qbTouchdowns', 1)} className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="text-xs text-gray-600 mb-1">Flag Pulls</div>
+                      <div className="flex items-center gap-1">
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'flagPulls', -1)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">-</button>
+                        )}
+                        <span className={`${viewMode === 'admin' ? 'flex-1' : 'w-full'} text-center font-bold text-sm`}>{stats.flagPulls}</span>
+                        {viewMode === 'admin' && (
+                          <button onClick={() => updateStat(selectedGame, player, 'flagPulls', 1)} className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+```
+
+);
+};
+
+export default FlagFootballScorer;
